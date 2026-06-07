@@ -1,0 +1,61 @@
+{
+  "name": "ecommerce_etl_pipeline",
+  "schedule": {
+    "quartz_cron_expression": "0 0 2 * * ?",
+    "timezone_id": "UTC"
+  },
+  "tasks": [
+    {
+      "task_key": "ingest_raw",
+      "description": "Ingest raw events from object storage",
+      "notebook_task": {
+        "notebook_path": "/jobs/01_ingest_raw",
+        "base_parameters": {
+          "volume_path": "/Volumes/ecommerce/landing/events/"
+        }
+      },
+      "timeout_seconds": 300
+    },
+    {
+      "task_key": "transform_silver",
+      "description": "Clean and enrich events",
+      "notebook_task": {
+        "notebook_path": "/jobs/02_transform_silver"
+      },
+      "depends_on": [
+        {
+          "task_key": "ingest_raw"
+        }
+      ],
+      "timeout_seconds": 600
+    },
+    {
+      "task_key": "aggregate_gold",
+      "description": "Build daily sales aggregation",
+      "notebook_task": {
+        "notebook_path": "/jobs/03_aggregate_gold"
+      },
+      "depends_on": [
+        {
+          "task_key": "transform_silver"
+        }
+      ],
+      "timeout_seconds": 300
+    }
+  ],
+  "job_clusters": [
+    {
+      "job_cluster_key": "etl_cluster",
+      "new_cluster": {
+        "spark_version": "13.3.x-scala2.12",
+        "node_type_id": "i3.xlarge",
+        "num_workers": 2
+      }
+    }
+  ],
+  "email_notifications": {
+    "on_failure": [
+      "oncall@company.com"
+    ]
+  }
+}
